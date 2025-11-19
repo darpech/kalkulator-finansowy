@@ -1,15 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Trash2, Calculator, TrendingDown, TrendingUp, Calendar, DollarSign, PieChart, Info, ArrowRight, CheckCircle, Banknote } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
+import React, { useState, useMemo } from 'react';
+import { Plus, Trash2, Calculator, PieChart, Calendar, ArrowRight, CheckCircle, Info, TrendingDown } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // --- Helper Functions ---
 
 const formatCurrency = (value) => {
   return new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN', maximumFractionDigits: 0 }).format(value);
-};
-
-const formatPercent = (value) => {
-  return new Intl.NumberFormat('pl-PL', { style: 'percent', minimumFractionDigits: 2 }).format(value / 100);
 };
 
 // --- Calculation Logic ---
@@ -39,7 +35,6 @@ const calculateLoan = (scenario, globalWibor, globalInflation) => {
   const r = interestRate / 100 / 12;
   
   // Monthly inflation rate for NPV calculation
-  // If scenario ignores inflation, we set effective inflation to 0 for this calculation
   const effectiveInflation = scenario.ignoreInflation ? 0 : (parseFloat(globalInflation) || 0);
   const inflationRate = effectiveInflation / 100;
   const r_inflation = Math.pow(1 + inflationRate, 1/12) - 1;
@@ -54,7 +49,7 @@ const calculateLoan = (scenario, globalWibor, globalInflation) => {
   const initialCommission = amount * (commissionPercent / 100);
   const totalStartCosts = initialCommission + otherCosts;
   
-  // NPV Calculation starts with initial outflow (costs - grants) happening at month 0
+  // NPV Calculation
   let npvSum = (totalStartCosts - grantAmount); 
 
   for (let month = 1; month <= periodMonths; month++) {
@@ -91,7 +86,6 @@ const calculateLoan = (scenario, globalWibor, globalInflation) => {
     currentBalance -= capitalPart;
     totalInterest += interestPart;
 
-    // Discount this month's payment to Present Value (PV) based on inflation
     const discountFactor = 1 / Math.pow(1 + r_inflation, month);
     const pvInstallment = installment * discountFactor;
     npvSum += pvInstallment;
@@ -107,8 +101,6 @@ const calculateLoan = (scenario, globalWibor, globalInflation) => {
 
   const totalCost = totalStartCosts + totalInterest + amount - grantAmount;
   const totalCostPercentage = (totalCost / amount) * 100;
-
-  // Real cost comparison
   const realBenefit = amount - npvSum; 
 
   return {
@@ -121,16 +113,17 @@ const calculateLoan = (scenario, globalWibor, globalInflation) => {
       totalStartCosts, 
       grantAmount,
       totalRepayed: totalInterest + amount, 
-      totalCostProject: totalCost, // Nominal amount leaving pocket
+      totalCostProject: totalCost, 
       totalCostPercentage,
-      npvTotal: npvSum, // Net Present Value of all outflows
-      realBenefit: realBenefit // If positive, inflation "paid off" some debt
+      npvTotal: npvSum, 
+      realBenefit: realBenefit 
     }
   };
 };
 
 // --- Components ---
 
+// To jest kluczowy komponent stylów - upewnij się, że te klasy tu są!
 const Card = ({ children, className = "" }) => (
   <div className={`bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden ${className}`}>
     {children}
@@ -148,7 +141,6 @@ const Tooltip = ({ text }) => (
 );
 
 export default function App() {
-  // --- State ---
   const [globalWibor, setGlobalWibor] = useState(5.85);
   const [globalInflation, setGlobalInflation] = useState(4.5); 
   const [activeTab, setActiveTab] = useState('input'); 
@@ -188,8 +180,6 @@ export default function App() {
       ignoreInflation: false
     }
   ]);
-
-  // --- Handlers ---
 
   const addScenario = () => {
     const newId = Math.max(...scenarios.map(s => s.id), 0) + 1;
@@ -256,8 +246,6 @@ export default function App() {
     alert("Pobrano aktualną stawkę WIBOR 3M z NBP (symulacja).");
     setGlobalWibor(5.85);
   };
-
-  // --- Derived Data ---
 
   const results = useMemo(() => {
     return scenarios.map(s => calculateLoan(s, globalWibor, globalInflation));

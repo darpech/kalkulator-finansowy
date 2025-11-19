@@ -147,7 +147,7 @@ const Tooltip = ({ text }) => (
   </div>
 );
 
-export default function FinancingComparator() {
+export default function App() {
   // --- State ---
   const [globalWibor, setGlobalWibor] = useState(5.85);
   const [globalInflation, setGlobalInflation] = useState(4.5); 

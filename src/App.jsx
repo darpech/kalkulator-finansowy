@@ -149,31 +149,31 @@ export default function App() {
   const [scenarios, setScenarios] = useState([
     {
       id: 1,
-      name: 'Kredyt Standardowy',
+      name: 'Pożyczka unijna z FKIP',
       amount: 500000,
-      periodMonths: 60,
+      periodMonths: 120,
       graceMonths: 0,
-      rateType: 'wibor', 
-      fixedRate: 7.5,
-      margin: 2.0,
-      commissionPercent: 2.0,
-      otherCosts: [{ id: 1, name: 'Wycena', value: 1000 }],
+      rateType: 'fixed', 
+      fixedRate: 0.5,
+      margin: 0.0,
+      commissionPercent: 0.0,
+      otherCosts: [{ id: 1, name: 'np. analiza, wycena', value: 0 }],
       installmentType: 'equal', 
-      grantType: 'amount',
-      grantValue: 0,
+      grantType: 'percent',
+      grantValue: 20,
       ignoreInflation: false
     },
     {
       id: 2,
-      name: 'Kredyt z Dotacją',
+      name: 'Kredyt komercyjny',
       amount: 500000,
-      periodMonths: 60,
+      periodMonths: 120,
       graceMonths: 0,
-      rateType: 'fixed',
-      fixedRate: 2.0,
+      rateType: 'wibor',
+      fixedRate: 7.5,
       margin: 2.5,
-      commissionPercent: 0,
-      otherCosts: [],
+      commissionPercent: 1,
+      otherCosts: [{ id: 1, name: 'np. analiza, wycena', value: 0 }],
       installmentType: 'equal',
       grantType: 'amount',
       grantValue: 0,
@@ -186,12 +186,12 @@ export default function App() {
     setScenarios([...scenarios, {
       id: newId,
       name: `Opcja #${newId}`,
-      amount: scenarios[0]?.amount || 100000,
-      periodMonths: scenarios[0]?.periodMonths || 60,
+      amount: scenarios[0]?.amount || 500000,
+      periodMonths: scenarios[0]?.periodMonths || 120,
       graceMonths: 0,
       rateType: 'wibor',
-      fixedRate: 8.0,
-      margin: 2.0,
+      fixedRate: 7.5,
+      margin: 2.5,
       commissionPercent: 1.0,
       otherCosts: [],
       installmentType: 'equal',
@@ -244,7 +244,7 @@ export default function App() {
 
   const fetchWibor = () => {
     alert("Pobrano aktualną stawkę WIBOR 3M z NBP (symulacja).");
-    setGlobalWibor(5.85);
+    setGlobalWibor(4.02);
   };
 
   const results = useMemo(() => {

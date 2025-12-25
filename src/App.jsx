@@ -168,7 +168,32 @@ export default function App() {
     }
   }, []);
 
-  const [globalWibor, setGlobalWibor] = useState(4.02);
+  const [globalWibor, setGlobalWibor] = useState(4.00);
+
+  // Auto-fetch WIBOR
+  useEffect(() => {
+    const fetchWibor = async () => {
+      try {
+        // Using corsproxy.io to bypass CORS for stooq.pl CSV
+        const response = await fetch('https://corsproxy.io/?https://stooq.pl/q/l/?s=plopln3m&f=sd2t2olc&h&e=csv');
+        const text = await response.text();
+        // CSV format: Symbol,Date,Time,Open,Low,Close (Close is the value we want, or Open/Low since it's an index usually same)
+        // Example: PLOPLN3M,2025-12-23,12:00:00,4,4,4
+        const lines = text.trim().split('\n');
+        if (lines.length >= 2) {
+          const values = lines[1].split(',');
+          const wiborValue = parseFloat(values[values.length - 1]); // Last column is Close
+          if (!isNaN(wiborValue)) {
+             setGlobalWibor(wiborValue);
+             console.log("WIBOR updated:", wiborValue);
+          }
+        }
+      } catch (error) {
+        console.warn("Failed to auto-fetch WIBOR:", error);
+      }
+    };
+    fetchWibor();
+  }, []);
   const [globalInflation, setGlobalInflation] = useState(3.0); 
   const [activeTab, setActiveTab] = useState('compare'); 
   const [selectedScenarioId, setSelectedScenarioId] = useState(null); 
@@ -254,6 +279,69 @@ export default function App() {
                       </select>
                     </div>
                     <input type="number" value={scenario.grantValue} onChange={(e) => updateScenario(scenario.id, 'grantValue', parseFloat(e.target.value))} className="w-full p-2 border border-emerald-200 bg-emerald-50 rounded text-sm font-bold text-emerald-700" />
+                  </div>
+
+                  {/* Restored Financial Parameters */}
+                  <div className="col-span-2 border-t pt-2 mt-1">
+                    <label className="text-[10px] text-slate-500 font-bold uppercase mb-1 block">Oprocentowanie</label>
+                    <div className="flex gap-2 mb-2">
+                        <button
+                            onClick={() => updateScenario(scenario.id, 'rateType', 'wibor')}
+                            className={`flex-1 text-xs py-1 rounded border transition-colors ${scenario.rateType === 'wibor' ? 'bg-blue-100 border-blue-500 text-blue-700 font-bold' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                        >
+                            Zmienne (WIBOR)
+                        </button>
+                        <button
+                            onClick={() => updateScenario(scenario.id, 'rateType', 'fixed')}
+                            className={`flex-1 text-xs py-1 rounded border transition-colors ${scenario.rateType === 'fixed' ? 'bg-blue-100 border-blue-500 text-blue-700 font-bold' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                        >
+                            Stałe
+                        </button>
+                    </div>
+
+                    {scenario.rateType === 'fixed' ? (
+                         <div>
+                            <div className="flex justify-between">
+                                <label className="text-[10px] text-slate-400">Stawka stała (%)</label>
+                            </div>
+                            <input type="number" value={scenario.fixedRate} onChange={(e) => updateScenario(scenario.id, 'fixedRate', parseFloat(e.target.value))} className="w-full p-2 border border-slate-300 rounded text-sm" />
+                         </div>
+                    ) : (
+                        <div className="grid grid-cols-2 gap-2">
+                             <div>
+                                <label className="text-[10px] text-slate-400">WIBOR 3M</label>
+                                <div className="p-2 bg-slate-100 border border-slate-200 rounded text-sm text-slate-500 text-center font-mono">{globalWibor}%</div>
+                             </div>
+                             <div>
+                                <label className="text-[10px] text-slate-400">Marża (%)</label>
+                                <input type="number" value={scenario.margin} onChange={(e) => updateScenario(scenario.id, 'margin', parseFloat(e.target.value))} className="w-full p-2 border border-slate-300 rounded text-sm" />
+                             </div>
+                             <div className="col-span-2 text-[10px] text-right text-slate-400">
+                                Razem: <span className="font-bold text-slate-700">{(globalWibor + (parseFloat(scenario.margin)||0)).toFixed(2)}%</span>
+                             </div>
+                        </div>
+                    )}
+                  </div>
+
+                  <div className="col-span-2 border-t pt-2">
+                      <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] text-slate-500 font-bold uppercase">Prowizja (%)</label>
+                            <input type="number" value={scenario.commissionPercent} onChange={(e) => updateScenario(scenario.id, 'commissionPercent', parseFloat(e.target.value))} className="w-full p-2 border border-slate-300 rounded text-sm" />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-500 font-bold uppercase">Inne koszty</label>
+                            <input
+                                type="number"
+                                value={scenario.otherCosts.reduce((sum, item) => sum + (parseFloat(item.value) || 0), 0)}
+                                onChange={(e) => {
+                                    const val = parseFloat(e.target.value) || 0;
+                                    updateScenario(scenario.id, 'otherCosts', [{ name: 'Koszty dodatkowe', value: val }]);
+                                }}
+                                className="w-full p-2 border border-slate-300 rounded text-sm"
+                            />
+                          </div>
+                      </div>
                   </div>
                 </div>
               </Card>

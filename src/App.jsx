@@ -1,28 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  Plus, Trash2, Calculator, PieChart, Calendar, ArrowRight, 
-  CheckCircle, Info, TrendingDown, FileText, PlayCircle, 
-  Music, Download, Video, ExternalLink 
+  Plus, Trash2, Calculator, PieChart, Calendar, ArrowRight, CheckCircle, Info, TrendingDown, FileText, PlayCircle, Music, Download, Video, ExternalLink 
 } from 'lucide-react';
 import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, 
-  Legend, ResponsiveContainer 
-} from 'recharts';
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // --- KONFIGURACJA GOOGLE ANALYTICS ---
 // Wklej tutaj swój identyfikator pomiaru (np. G-XXXXXXXXXX)
 const GA_TRACKING_ID = "G-PTJBYECCTB"; 
-
-// --- KONFIGURACJA PLIKÓW I INSTRUKCJI ---
-const INSTRUCTION_MATERIALS = {
-  documents: [
-    { title: "Prezentacja pożyczki GOZ", url: "https://drive.google.com/file/d/1F_EZnbiMi2AG_EvzqhWvEH9WVa0JJH1u/view?usp=sharing", type: "PDF" }
-  ],
-  media: [
-    { title: "Informacja wideo o pożyczce", url: "https://drive.google.com/file/d/1dxmwjsQcXhAkJBsspzbHQibjWqX9_aOO/view?usp=sharing", type: "VIDEO" },
-    { title: "Nagranie audio: Porady eksperta", url: "", type: "AUDIO" }
-  ]
-};
 
 // --- Helper Functions ---
 
@@ -53,7 +38,10 @@ const calculateLoan = (scenario, globalWibor, globalInflation) => {
     grantAmount = parseFloat(scenario.grantValue) || 0;
   }
 
+  // Monthly rate
   const r = interestRate / 100 / 12;
+
+  // Monthly inflation rate for NPV calculation
   const effectiveInflation = scenario.ignoreInflation ? 0 : (parseFloat(globalInflation) || 0);
   const inflationRate = effectiveInflation / 100;
   const r_inflation = Math.pow(1 + inflationRate, 1/12) - 1;
@@ -61,10 +49,14 @@ const calculateLoan = (scenario, globalWibor, globalInflation) => {
   let schedule = [];
   let currentBalance = amount;
   let totalInterest = 0;
+  
   const repaymentMonths = periodMonths - graceMonths;
+
+   // Initial costs
   const initialCommission = amount * (commissionPercent / 100);
   const totalStartCosts = initialCommission + otherCosts;
   
+   // NPV Calculation
   let npvSum = (totalStartCosts - grantAmount); 
 
   for (let month = 1; month <= periodMonths; month++) {
@@ -106,11 +98,18 @@ const calculateLoan = (scenario, globalWibor, globalInflation) => {
     npvSum += pvInstallment;
 
     schedule.push({
-      month, interestPart, capitalPart, installment, remainingBalance: Math.max(0, currentBalance)
+      month, 
+      interestPart, 
+      capitalPart, 
+      installment, 
+      remainingBalance: Math.max(0, currentBalance)
     });
   }
 
   const totalCost = totalStartCosts + totalInterest + amount - grantAmount;
+  const totalCostPercentage = (totalCost / amount) * 100;
+  const realBenefit = amount - npvSum; 
+
   return {
     ...scenario,
     effectiveRate: interestRate,
@@ -123,7 +122,7 @@ const calculateLoan = (scenario, globalWibor, globalInflation) => {
       totalRepayed: totalInterest + amount, 
       totalCostProject: totalCost, 
       npvTotal: npvSum, 
-      realBenefit: amount - npvSum 
+      realBenefit: realBenefit 
     }
   };
 };
@@ -168,7 +167,7 @@ export default function App() {
     }
   }, []);
 
-  const [globalWibor, setGlobalWibor] = useState(4.00);
+  const [globalWibor, setGlobalWibor] = useState(4.02);
 
   // Auto-fetch WIBOR
   useEffect(() => {
@@ -195,23 +194,40 @@ export default function App() {
     fetchWibor();
   }, []);
   const [globalInflation, setGlobalInflation] = useState(3.0); 
-  const [activeTab, setActiveTab] = useState('compare'); 
+  const [activeTab, setActiveTab] = useState('input'); 
   const [selectedScenarioId, setSelectedScenarioId] = useState(null); 
 
   const [scenarios, setScenarios] = useState([
-    { id: 1, name: 'Pożyczka unijna z FKIP', amount: 500000, periodMonths: 120, graceMonths: 0, rateType: 'fixed', fixedRate: 0.5, margin: 0.0, commissionPercent: 0.0, otherCosts: [], installmentType: 'equal', grantType: 'percent', grantValue: 20, ignoreInflation: false },
-    { id: 2, name: 'Kredyt komercyjny', amount: 500000, periodMonths: 120, graceMonths: 0, rateType: 'wibor', fixedRate: 7.5, margin: 2.5, commissionPercent: 1, otherCosts: [], installmentType: 'equal', grantType: 'amount', grantValue: 0, ignoreInflation: false }
+    { id: 1, 
+      name: 'Pożyczka unijna z FKIP', 
+      amount: 500000, 
+      periodMonths: 120, 
+      graceMonths: 0, 
+      rateType: 'fixed', 
+      fixedRate: 0.5, 
+      margin: 0.0, 
+      commissionPercent: 0.0, 
+      otherCosts: [], 
+      installmentType: 'equal', 
+      grantType: 'percent', 
+      grantValue: 20, 
+      ignoreInflation: false },
+
+    { id: 2, 
+      name: 'Kredyt komercyjny', 
+      amount: 500000, 
+      periodMonths: 120, 
+      graceMonths: 0, 
+      rateType: 'wibor', 
+      fixedRate: 7.5, 
+      margin: 2.5, 
+      commissionPercent: 1, 
+      otherCosts: [], 
+      installmentType: 'equal', 
+      grantType: 'amount', 
+      grantValue: 0, 
+      ignoreInflation: false }
   ]);
-
-  const results = useMemo(() => scenarios.map(s => calculateLoan(s, globalWibor, globalInflation)), [scenarios, globalWibor, globalInflation]);
-  
-  const bestOption = useMemo(() => results.reduce((prev, curr) => (prev.summary.totalCostProject < curr.summary.totalCostProject ? prev : curr)), [results]);
-  const worstOption = useMemo(() => results.reduce((prev, curr) => (prev.summary.totalCostProject > curr.summary.totalCostProject ? prev : curr)), [results]);
-  const savingsAmount = worstOption.summary.totalCostProject - bestOption.summary.totalCostProject;
-
-  const updateScenario = (id, field, value) => {
-    setScenarios(scenarios.map(s => s.id === id ? { ...s, [field]: value } : s));
-  };
 
   const addScenario = () => {
     const newId = Math.max(...scenarios.map(s => s.id), 0) + 1;
@@ -220,6 +236,67 @@ export default function App() {
 
   const removeScenario = (id) => scenarios.length > 1 && setScenarios(scenarios.filter(s => s.id !== id));
 
+   const updateScenario = (id, field, value) => {
+    setScenarios(scenarios.map(s => s.id === id ? { ...s, [field]: value } : s));
+  };
+
+  const addOtherCost = (scenarioId) => {
+    setScenarios(scenarios.map(s => {
+      if (s.id === scenarioId) {
+        return {
+          ...s,
+          otherCosts: [...s.otherCosts, { id: Date.now(), name: 'Inny koszt', value: 0 }]
+        };
+      }
+      return s;
+    }));
+  };
+
+  const updateOtherCost = (scenarioId, costId, field, value) => {
+    setScenarios(scenarios.map(s => {
+      if (s.id === scenarioId) {
+        const newCosts = s.otherCosts.map(c => c.id === costId ? { ...c, [field]: value } : c);
+        return { ...s, otherCosts: newCosts };
+      }
+      return s;
+    }));
+  };
+
+  const removeOtherCost = (scenarioId, costId) => {
+    setScenarios(scenarios.map(s => {
+      if (s.id === scenarioId) {
+        return { ...s, otherCosts: s.otherCosts.filter(c => c.id !== costId) };
+      }
+      return s;
+    }));
+  };
+
+  const results = useMemo(() => {
+    return scenarios.map(s => calculateLoan(s, globalWibor, globalInflation));
+  }, [scenarios, globalWibor, globalInflation]);
+
+  const bestOption = useMemo(() => {
+    return results.reduce((prev, curr) => 
+      (prev.summary.totalCostProject < curr.summary.totalCostProject) ? prev : curr
+    );
+  }, [results]);
+  
+  const worstOption = useMemo(() => {
+    return results.reduce((prev, curr) => 
+      (prev.summary.totalCostProject > curr.summary.totalCostProject) ? prev : curr
+    );
+  }, [results]);
+
+  const savingsAmount = worstOption.summary.totalCostProject - bestOption.summary.totalCostProject;
+
+  const chartData = results.map(r => ({
+    name: r.name,
+    'Odsetki': parseFloat(r.summary.totalInterest.toFixed(2)),
+    'Koszty startowe': parseFloat(r.summary.totalStartCosts.toFixed(2)),
+    'Kapitał (netto)': parseFloat((r.summary.loanAmount - r.summary.grantAmount).toFixed(2)),
+    totalPayable: r.summary.totalCostProject
+  }));
+  
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-12">
       <header className="bg-blue-900 text-white p-6 shadow-lg sticky top-0 z-20">
